@@ -235,3 +235,302 @@ def run_assignment(conn: sqlite3.Connection) -> None:
     logger.info("Q6 The 5 opening_codes appear most frequently. Done ✅")
 
     logger.info("STAGE 2 Done ✅")
+
+    # ==================================================
+    # STAGE 3
+    # ==================================================
+    print("\n" + "=" * 60)
+    print("STAGE 3 - JOINS & CTEs")
+    logger.info("=" * 60)
+    logger.info("Start STAGE 3")
+    print("=" * 60)
+
+    # ==================================================
+    # Q7 
+    # JOIN games to openings
+    # find the 5 most played openings with their full name.
+    # ==================================================
+
+    q7 = query(
+        conn,
+        """
+        SELECT
+
+            o.opening_code,
+
+            o.opening_fullname,
+
+            COUNT(*) AS total_games
+
+        FROM games g
+
+        JOIN openings o
+
+            ON g.opening_code = o.opening_code
+
+        GROUP BY
+
+            o.opening_code,
+            o.opening_fullname
+
+        ORDER BY total_games DESC
+
+        LIMIT 5
+        """
+    )
+
+    print("\nQ7 - Most Played Openings")
+
+    print(q7)
+    logger.info("Q7 Find the 5 most played openings with their full name. Done ✅")
+
+    # ==================================================
+    # Q8 
+    # LEFT JOIN players to games: 
+    # find any players in the players table who have never appeared as white_id.
+    # ==================================================
+
+    q8 = query(
+        conn,
+        """
+        SELECT
+
+            p.username
+
+        FROM players p
+
+        LEFT JOIN games g
+
+            ON p.username = g.white_id
+
+        WHERE g.white_id IS NULL
+        """
+    )
+
+    print("\nQ8 - Players Never Appearing As White")
+
+    print(q8.head())
+    logger.info("Q8 Players Never Appearing As White. Done ✅")
+
+
+    # ==================================================
+    # Q9 
+    # Using a CTE: compute total wins per player (as white). 
+    # Return top 5.
+    # ==================================================
+
+    q9 = query(
+        conn,
+        """
+        WITH white_wins AS (
+
+            SELECT
+
+                white_id,
+
+                COUNT(*) AS wins
+
+            FROM games
+
+            WHERE winner = 'White'
+
+            GROUP BY white_id
+        )
+
+        SELECT *
+
+        FROM white_wins
+
+        ORDER BY wins DESC
+
+        LIMIT 5
+        """
+    )
+
+    print("\nQ9 - Top 5 White Winners")
+
+    print(q9)
+    logger.info("Q9 Return Top 5 White Winners. Done ✅")
+
+    # ==================================================
+    # Q10 
+    # UNION CTE: combine white wins and black wins into one 'player_wins' table. 
+    # Who has the most total wins?
+    # ==================================================
+
+    q10 = query(
+        conn,
+        """
+        WITH player_wins AS (
+
+            SELECT
+
+                white_id AS player,
+
+                COUNT(*) AS wins
+
+            FROM games
+
+            WHERE winner = 'White'
+
+            GROUP BY white_id
+
+            UNION ALL
+
+            SELECT
+
+                black_id AS player,
+
+                COUNT(*) AS wins
+
+            FROM games
+
+            WHERE winner = 'Black'
+
+            GROUP BY black_id
+        )
+
+        SELECT
+
+            player,
+
+            SUM(wins) AS total_wins
+
+        FROM player_wins
+
+        GROUP BY player
+
+        ORDER BY total_wins DESC
+
+        LIMIT 1
+        """
+    )
+
+    print("\nQ10 - Player With Most Total Wins")
+    print(q10)
+    logger.info("Q10 Player With Most Total Wins. Done ✅")
+
+    logger.info("STAGE 3 Done ✅")
+
+
+    # ==================================================
+    # STAGE 4
+    # ==================================================
+
+
+    print("\n" + "=" * 60)
+    print("STAGE 4 - WINDOW FUNCTIONS")
+    logger.info("=" * 60)
+    logger.info("Start STAGE 4")
+    print("=" * 60)
+
+    # ==================================================
+    # Q11 
+    # Window function: for each game, add a column showing what RANK each game holds for that white player by white_rating (highest rating = rank 1). 
+    # Show top 10 rows.
+    # ==================================================
+
+    q11 = query(
+        conn,
+        """
+        SELECT
+
+            game_id,
+
+            white_id,
+
+            white_rating,
+
+            RANK() OVER (
+
+                PARTITION BY white_id
+
+                ORDER BY white_rating DESC
+
+            ) AS rating_rank
+
+        FROM games
+
+        LIMIT 10
+        """
+    )
+
+    print("\nQ11 - Top 10 Rating Rank")
+    print(q11)
+
+    logger.info("Q11 Top 10 Rating Rank. Done ✅")
+
+    # ==================================================
+    # Q12 
+    # LAG: show each game's white_rating and the previous game's white_rating for the same player. 
+    # Filter to players with 5+ games.
+    # ==================================================
+
+    q12 = query(
+        conn,
+        """
+        WITH player_games AS (
+
+            SELECT
+
+                game_id,
+
+                white_id,
+
+                white_rating,
+
+                LAG(
+                    white_rating
+                ) OVER (
+
+                    PARTITION BY white_id
+
+                    ORDER BY game_id
+
+                ) AS previous_rating
+
+            FROM games
+        )
+
+        SELECT *
+
+        FROM player_games
+
+        WHERE white_id IN (
+
+            SELECT white_id
+
+            FROM games
+
+            GROUP BY white_id
+
+            HAVING COUNT(*) >= 5
+        )
+
+        LIMIT 10
+        """
+    )
+
+    print("\nQ12 - Previous Rating")
+    print(q12)
+
+    logger.info("Q12 Compare current rating with previous game. Done ✅")
+
+    logger.info("STAGE 4 Done ✅")
+
+
+
+
+def explain_query_plan(conn, sql):
+    """
+    Show SQLite execution plan.
+    """
+
+    result = conn.execute(f"EXPLAIN QUERY PLAN {sql}").fetchall()
+
+    print("\nQuery Plan:")
+
+    for row in result:
+        print(row)
+
+    logger.info("EXPLAIN QUERY PLAN executed Done ✅")
