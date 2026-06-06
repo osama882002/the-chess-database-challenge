@@ -227,6 +227,9 @@ def run_assignment(conn: sqlite3.Connection) -> None:
         HAVING COUNT(*) > 500
 
         ORDER BY total_games DESC
+
+        LIMIT 5
+
         """
     )
 
@@ -450,7 +453,7 @@ def run_assignment(conn: sqlite3.Connection) -> None:
             ) AS rating_rank
 
         FROM games
-
+        ORDER BY white_id
         LIMIT 10
         """
     )
@@ -521,16 +524,218 @@ def run_assignment(conn: sqlite3.Connection) -> None:
 
 
 
-def explain_query_plan(conn, sql):
+def explain_query_plan(conn):
     """
     Show SQLite execution plan.
     """
 
-    result = conn.execute(f"EXPLAIN QUERY PLAN {sql}").fetchall()
+    result = conn.execute(
+        """
+        EXPLAIN QUERY PLAN
+
+        SELECT *
+
+        FROM games
+
+        WHERE white_id = 'taranga'
+        """
+    ).fetchall()
 
     print("\nQuery Plan:")
 
     for row in result:
         print(row)
 
+    logger.info("=" * 60)
     logger.info("EXPLAIN QUERY PLAN executed Done ✅")
+
+def run_assignment_extended(conn):
+    # ==================================================
+    # SQL Question 1
+    # Which opening code has the highest draw rate?
+    # ==================================================
+    print("\n" + "=" * 60)
+    print("Database Extended")
+    print("=" * 60)
+    logger.info("=" * 60)
+    logger.info("Start Database Extended")
+    sql_q1 = query(
+        conn,
+        """
+        SELECT
+
+            opening_code,
+
+            ROUND(
+                SUM(
+                    CASE
+                        WHEN winner = 'Draw'
+                        THEN 1
+                        ELSE 0
+                    END
+                ) * 100.0 / COUNT(*),
+                2
+            ) AS draw_rate
+
+        FROM games
+
+        GROUP BY opening_code
+
+        HAVING COUNT(*) >= 10
+
+        ORDER BY draw_rate DESC
+
+        LIMIT 1
+        """
+    )
+
+    print("\nSQL Q1 - Highest Draw Rate Opening")
+    print(sql_q1)
+    logger.info("SQL Q1 - Highest Draw Rate Opening")
+
+
+    # ==================================================
+    # SQL Question 2
+    # More wins as Black than White
+    # ==================================================
+
+    sql_q2 = query(
+        conn,
+        """
+        WITH white_wins AS (
+
+            SELECT
+                white_id AS player,
+                COUNT(*) AS wins
+
+            FROM games
+
+            WHERE winner = 'White'
+
+            GROUP BY white_id
+        ),
+
+        black_wins AS (
+
+            SELECT
+                black_id AS player,
+                COUNT(*) AS wins
+
+            FROM games
+
+            WHERE winner = 'Black'
+
+            GROUP BY black_id
+        )
+
+        SELECT
+
+            b.player,
+
+            COALESCE(w.wins,0) AS white_wins,
+
+            b.wins AS black_wins
+
+        FROM black_wins b
+
+        LEFT JOIN white_wins w
+
+            ON b.player = w.player
+
+        WHERE b.wins > COALESCE(w.wins,0)
+
+        ORDER BY black_wins DESC
+
+        LIMIT 20
+        """
+    )
+
+    print("\nSQL_Q2 - Players Better As Black")
+
+    print(sql_q2)
+    logger.info("SQL_Q2 - Players Better As Black")
+
+    # ==================================================
+    # SQL Question 3
+    # Most common opening per victory status
+    # ==================================================
+    sql_q3 = query(
+        conn,
+        """
+        WITH opening_counts AS (
+
+            SELECT
+
+                victory_status,
+                opening_code,
+                COUNT(*) AS total_games,
+
+                RANK() OVER (
+
+                    PARTITION BY victory_status
+
+                    ORDER BY COUNT(*) DESC
+
+                ) AS rnk
+
+            FROM games
+
+            GROUP BY
+                victory_status,
+                opening_code
+        )
+
+        SELECT *
+
+        FROM opening_counts
+
+        WHERE rnk = 1
+        """
+    )
+
+    print("\nSQL Q3 - Most Common Opening Per Victory Status")
+
+    print(sql_q3)
+    logger.info("SQL Q3 - Most Common Opening Per Victory Status")
+
+    # ==================================================
+    # SQL Question 4
+    # Top 3 opening families by average turns
+    # ==================================================
+    sql_q4 = query(
+        conn,
+        """
+        SELECT
+
+            SUBSTR(
+                opening_fullname,
+                1,
+                INSTR(opening_fullname || ':', ':') - 1
+            ) AS opening_family,
+
+            ROUND(
+                AVG(g.turns),
+                2
+            ) AS avg_turns
+
+        FROM games g
+
+        JOIN openings o
+
+            ON g.opening_code = o.opening_code
+
+        GROUP BY opening_family
+
+        ORDER BY avg_turns DESC
+
+        LIMIT 3
+        """
+    )
+
+    print("\nSQL Q4 - Top Opening Families By Avg Turns")
+
+    print(sql_q4)
+    print("=" * 60)
+    logger.info("SQL Q4 - Top Opening Families By Avg Turns")
+    logger.info("Database Extended. Done")
+    

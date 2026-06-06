@@ -67,6 +67,7 @@ def export_features(conn: sqlite3.Connection) -> None:
     features_df.to_csv(output_path, index=False)
 
     logger.info(f"Feature table exported: {output_path}")
+    print(f"Feature table exported: {output_path}")
 
 
 def export_game_ranks(conn: sqlite3.Connection) -> None:
@@ -105,3 +106,4 @@ def export_game_ranks(conn: sqlite3.Connection) -> None:
     ranks_df.to_csv(output_path, index=False)
 
     logger.info(f"Game ranks exported: {output_path}")
+    print(f"Game ranks exported: {output_path}")

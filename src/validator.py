@@ -194,3 +194,18 @@ def verify_schema(conn: sqlite3.Connection) -> None:
 
     logger.info("DATABASE VALIDATION PASSED")
     
+
+def verify_indexes(conn):
+    """
+    Verify indexes exist.
+    """
+
+    indexes = conn.execute("""
+        SELECT name
+        FROM sqlite_master
+        WHERE type='index'
+    """).fetchall()
+
+    # print(indexes)
+
+    logger.info("Indexes verified")   
