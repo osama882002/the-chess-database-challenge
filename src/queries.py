@@ -238,6 +238,7 @@ def run_assignment(conn: sqlite3.Connection) -> None:
     logger.info("Q6 The 5 opening_codes appear most frequently. Done ✅")
 
     logger.info("STAGE 2 Done ✅")
+    
 
     # ==================================================
     # STAGE 3
@@ -575,17 +576,18 @@ def run_assignment_extended(conn):
                     END
                 ) * 100.0 / COUNT(*),
                 2
-            ) AS draw_rate
+            ) AS draw_rate,
+            COUNT(*) AS total_games
 
         FROM games
 
         GROUP BY opening_code
 
-        HAVING COUNT(*) >= 10
+        HAVING COUNT(*) >= 20
 
         ORDER BY draw_rate DESC
 
-        LIMIT 1
+        LIMIT 5
         """
     )
 
@@ -606,45 +608,48 @@ def run_assignment_extended(conn):
 
             SELECT
                 white_id AS player,
-                COUNT(*) AS wins
-
+                COUNT(*) AS white_wins
             FROM games
-
-            WHERE winner = 'White'
-
+            WHERE winner='White'
             GROUP BY white_id
+
         ),
 
         black_wins AS (
 
             SELECT
                 black_id AS player,
-                COUNT(*) AS wins
-
+                COUNT(*) AS black_wins
             FROM games
-
-            WHERE winner = 'Black'
-
+            WHERE winner='Black'
             GROUP BY black_id
+
         )
 
         SELECT
 
             b.player,
 
-            COALESCE(w.wins,0) AS white_wins,
+            COALESCE(
+                w.white_wins,
+                0
+            ) AS white_wins,
 
-            b.wins AS black_wins
+            b.black_wins
 
         FROM black_wins b
 
         LEFT JOIN white_wins w
-
             ON b.player = w.player
 
-        WHERE b.wins > COALESCE(w.wins,0)
+        WHERE
+            b.black_wins >
+            COALESCE(
+                w.white_wins,
+                0
+            )
 
-        ORDER BY black_wins DESC
+        ORDER BY b.black_wins DESC
 
         LIMIT 20
         """
@@ -665,31 +670,33 @@ def run_assignment_extended(conn):
         WITH opening_counts AS (
 
             SELECT
+                g.victory_status,
+                o.opening_shortname,
+                COUNT(*) AS count,
 
-                victory_status,
-                opening_code,
-                COUNT(*) AS total_games,
-
-                RANK() OVER (
-
-                    PARTITION BY victory_status
-
+                RANK() OVER(
+                    PARTITION BY g.victory_status
                     ORDER BY COUNT(*) DESC
-
                 ) AS rnk
 
-            FROM games
+            FROM games g
+
+            JOIN openings o
+                ON g.opening_code = o.opening_code
 
             GROUP BY
-                victory_status,
-                opening_code
+                g.victory_status,
+                o.opening_shortname
         )
 
-        SELECT *
+        SELECT 
+            victory_status,
+            opening_shortname,
+            count
 
         FROM opening_counts
-
         WHERE rnk = 1
+        ORDER BY victory_status
         """
     )
 
@@ -707,28 +714,26 @@ def run_assignment_extended(conn):
         """
         SELECT
 
-            SUBSTR(
-                opening_fullname,
-                1,
-                INSTR(opening_fullname || ':', ':') - 1
-            ) AS opening_family,
+            o.opening_shortname AS opening_family,
 
             ROUND(
                 AVG(g.turns),
-                2
-            ) AS avg_turns
+                1
+            ) AS avg_turns,
+
+            COUNT(*) AS games
 
         FROM games g
 
         JOIN openings o
-
             ON g.opening_code = o.opening_code
 
-        GROUP BY opening_family
+        GROUP BY o.opening_shortname
+
+        HAVING COUNT(*) >= 20
 
         ORDER BY avg_turns DESC
-
-        LIMIT 3
+        LIMIT 3;
         """
     )
 
@@ -739,3 +744,6 @@ def run_assignment_extended(conn):
     logger.info("SQL Q4 - Top Opening Families By Avg Turns")
     logger.info("Database Extended. Done")
     
+
+
+

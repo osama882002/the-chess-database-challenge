@@ -295,4 +295,3 @@ def create_indexes(conn: sqlite3.Connection) -> None:
     logger.info(
         "Indexes created successfully."
     )
-

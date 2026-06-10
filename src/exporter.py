@@ -40,24 +40,31 @@ def export_features(conn: sqlite3.Connection) -> None:
     sql = """
     SELECT
 
-        game_id,
+        g.game_id,
 
-        white_rating - black_rating
+        g.white_rating - g.black_rating
             AS rating_diff,
 
-        turns,
+        g.turns,
 
-        rated,
+        g.rated,
 
-        opening_shortname,
+        o.opening_shortname,
 
-        winner
+        COALESCE(
+            p.total_games, 0
+        ) AS white_experience,
+
+        g.winner AS label
 
     FROM games g
 
     JOIN openings o
 
         ON g.opening_code = o.opening_code
+
+    LEFT JOIN players p
+        ON g.white_id = p.username    
     """
 
     features_df = pd.read_sql(sql, conn)
@@ -97,6 +104,9 @@ def export_game_ranks(conn: sqlite3.Connection) -> None:
         ) AS turns_rank
 
     FROM games
+    ORDER BY
+        white_id,
+        turns_rank
     """
 
     ranks_df = pd.read_sql(sql, conn)
@@ -107,3 +117,4 @@ def export_game_ranks(conn: sqlite3.Connection) -> None:
 
     logger.info(f"Game ranks exported: {output_path}")
     print(f"Game ranks exported: {output_path}")
+
