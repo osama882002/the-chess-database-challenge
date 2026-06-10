@@ -10,6 +10,40 @@ This project uses a normalized SQLite database called **chess.db** to store and 
 
 The design follows a relational database approach to reduce redundancy and improve query performance while maintaining data integrity through primary keys, foreign keys, and constraints.
 
+# Project Structure
+
+```text
+
+the-chess-database-challenge/
+
+├── data/
+│   ├── raw/
+│   │   └── chess_games.csv
+│   │
+│   └── processed/
+│       │ 
+│       ├── chess.db
+│       ├── features.csv
+│       └── game_ranks.csv
+│
+├── logs/
+│   └── chess_db.log
+│
+│
+├── src/
+│   ├── builder.py
+│   ├── db.py
+│   ├── exporter.py
+│   ├── logger.py
+│   ├── queries.py
+│   ├── schema.py
+│   └── validator.py
+│
+├── requirements.txt
+├── .gitignore
+└── README.md
+```
+
 ---
 
 # 1. players Table
